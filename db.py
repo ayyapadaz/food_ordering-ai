@@ -93,3 +93,62 @@ def get_order_db():
                   "quantity":row[3]
             }) 
       return orders          
+
+def get_orders_with_food():
+      conn=get_connection()
+      cursor=conn.cursor()
+      
+      cursor.execute("""SELECT orders.id,food_items.name,food_items.price,orders.quantity
+                        FROM orders
+                        JOIN food_items ON orders.food_id = food_items.id""")
+      rows=cursor.fetchall()
+
+      result=[]
+
+      for row in rows:
+            result.append({
+                  "order_id":row[0],
+                  "food_name":row[1],
+                  "price":row[2],
+                  "quantity":row[3],
+                  "total_price":row[2]*row[3]
+            })
+      conn.close()
+      return result
+
+def get_food_by_id(food_id):
+      conn=get_connection()
+      cursor=conn.cursor()
+
+      cursor.execute("""SELECT * FROM food_items WHERE id=?""",(food_id,))
+      row=cursor.fetchone()
+      conn.close()
+
+      if row:
+            return{
+                  "id":row[0],
+                "name":row[1],
+                "price":row[2],
+                "category":row[3]
+            }
+      return None
+
+def delete_order(order_id):
+      conn=get_connection()
+      cursor=conn.cursor()
+
+      cursor.execute("""DELETE FROM orders WHERE id=?""",(order_id,))
+      conn.commit()
+      deleted =cursor.rowcount
+      conn.close()
+      return deleted
+
+def update_order(order_id,quantity):
+      conn=get_connection()
+      cursor=conn.cursor()
+
+      cursor.execute("""UPDATE orders SET quantity=? WHERE id=?""",(quantity,order_id))
+      conn.commit()
+      updated =cursor.rowcount
+      conn.close()
+      return updated
