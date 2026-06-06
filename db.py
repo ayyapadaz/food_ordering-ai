@@ -336,3 +336,59 @@ def get_orders_by_user(user_id):
                   "total_price":row[2]*row[3]
             })
       return result
+
+def get_total_orders():
+      conn=get_connection()
+      conn=get_connection()
+      cursor=conn.cursor()
+      cursor.execute("""SELECT COUNT(*) FROM ORDERS""")
+      total=cursor.fetchone()[0]
+      conn.close()
+      return total
+
+def get_total_revenue():
+      conn=get_connection()
+      cursor=conn.cursor()
+      cursor.execute("""SELECT SUM(food_items.price * orders.quantity)
+                     FROM orders
+                     JOIN food_items ON orders.food_id = food_items.id""")
+      revenue = cursor.fetchone()[0]
+      conn.close()
+      return revenue
+
+def get_top_food():
+      conn=get_connection()
+      cursor=conn.cursor()
+      cursor.execute("""SELECT food_items.name, SUM(orders.quantity) as total_quantity
+                     FROM orders
+                     JOIN food_items ON orders.food_id = food_items.id
+                     GROUP BY food_items.name
+                     ORDER BY total_quantity DESC
+                     LIMIT 1""")
+      row = cursor.fetchone()
+      conn.close()
+      if row:
+            return {
+                  "food_name": row[0],
+                  "total_quantity": row[1]
+            }
+      return None
+
+def get_top_customer():
+      conn=get_connection()
+      cursor=conn.cursor()
+      cursor.execute("""SELECT users.name, SUM(food_items.price * orders.quantity) as total_spent
+                     FROM orders
+                     JOIN users ON orders.user_id = users.id
+                     JOIN food_items ON orders.food_id = food_items.id
+                     GROUP BY users.name
+                     ORDER BY total_spent DESC
+                     LIMIT 1""")
+      row = cursor.fetchone()
+      conn.close()                  
+      if row:
+            return {
+                  "customer_name": row[0],
+                  "total_spent": row[1]
+            }
+      return None

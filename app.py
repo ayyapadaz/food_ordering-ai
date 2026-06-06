@@ -18,6 +18,10 @@ from db import get_foods_by_category
 from db import update_food
 from db import delete_food  
 from db import get_orders_by_user
+from db import get_total_orders
+from db import get_total_revenue
+from db import get_top_food
+from db import get_top_customer
 
 app=Flask(__name__)
 
@@ -242,6 +246,34 @@ def get_user_orders(user_id):
       else:
             return jsonify({"error":"no orders found for this user"}),404
 
+@app.route("/orders/total")
+def get_total_orders_count():
+      total = get_total_orders()
+      return jsonify({"total_orders": total})
+
+@app.route("/orders/revenue")
+def get_revenue():
+      revenue = get_total_revenue()
+      if revenue is None:
+          revenue = 0
+      return jsonify({"total_revenue": revenue})
+
+@app.route("/orders/top_food")
+def get_topfood():
+      top_food = get_top_food()
+      if top_food:
+          return jsonify(top_food)
+      else:
+          return jsonify({"error":"no food found"}),404
+      
+
+@app.route("/orders/top_customer")
+def get_topcustomer():
+      top_customer = get_top_customer()
+      if top_customer:
+          return jsonify(top_customer)
+      else:
+          return jsonify({"error":"no customer found"}),404
 
 init_db()
 seed_food()
