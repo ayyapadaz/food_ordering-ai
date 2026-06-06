@@ -17,6 +17,7 @@ from db import add_food
 from db import get_foods_by_category
 from db import update_food
 from db import delete_food  
+from db import get_orders_by_user
 
 app=Flask(__name__)
 
@@ -51,6 +52,18 @@ def place_order():
         "error":"user_id is missing"
     }),400
 
+    food = get_food_by_id(data["food_id"])
+    if not food:
+        return jsonify({
+        "error":"food not found"}),404
+    
+    user = get_user_by_id(data["user_id"])
+    
+    if not user:
+        return jsonify({
+        "error":"user not found"
+    }),404
+    
     print("Received Order:", data)
 
 
@@ -220,6 +233,14 @@ def remove_food(food_id):
     return jsonify({
         "message":"food deleted successfully"
     })
+
+@app.route("/users/<int:user_id>/orders")
+def get_user_orders(user_id):
+      orders = get_orders_by_user(user_id)
+      if orders:
+            return jsonify(orders)
+      else:
+            return jsonify({"error":"no orders found for this user"}),404
 
 
 init_db()

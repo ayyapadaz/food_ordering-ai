@@ -316,3 +316,23 @@ def delete_food(food_id):
       conn.close()
 
       return deleted
+
+def get_orders_by_user(user_id):
+      conn=get_connection()
+      cursor=conn.cursor()
+      cursor.execute("""SELECT orders.id, food_items.name, food_items.price, orders.quantity
+                        FROM orders
+                        JOIN food_items ON orders.food_id = food_items.id
+                        WHERE orders.user_id=?""",(user_id,))
+      rows=cursor.fetchall()
+      conn.close()
+      result=[]
+      for row in rows:
+            result.append({
+                  "order_id":row[0],
+                  "food_name":row[1],
+                  "price":row[2],
+                  "quantity":row[3],
+                  "total_price":row[2]*row[3]
+            })
+      return result
