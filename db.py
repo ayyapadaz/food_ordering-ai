@@ -24,6 +24,11 @@ def init_db():
                    
                    FOREIGN KEY(user_id) REFERENCES users(id),
                    FOREIGN KEY(food_id) REFERENCES food_items(id))""")
+     cursor.execute("""CREATE TABLE IF NOT EXISTS restaurants (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    cuisine TEXT NOT NULL,
+    rating REAL NOT NULL)""")
      
      conn.commit()
      conn.close()
@@ -339,7 +344,6 @@ def get_orders_by_user(user_id):
 
 def get_total_orders():
       conn=get_connection()
-      conn=get_connection()
       cursor=conn.cursor()
       cursor.execute("""SELECT COUNT(*) FROM ORDERS""")
       total=cursor.fetchone()[0]
@@ -392,3 +396,86 @@ def get_top_customer():
                   "total_spent": row[1]
             }
       return None
+
+def add_restaurants(name,cuisine,rating):
+      conn=get_connection()
+      cursor=conn.cursor()
+
+      cursor.execute("""INSERT INTO restaurants (name,cuisine,rating) VALUES (?,?,?)""",(name,cuisine,rating))
+      conn.commit()
+      restaurant_id=cursor.lastrowid
+      conn.close()
+      return restaurant_id
+
+def get_restaurants():
+      conn=get_connection()
+      cursor=conn.cursor()
+
+      cursor.execute("""SELECT * FROM restaurants""")
+      rows=cursor.fetchall()
+      restaurants=[]
+      for row in rows:
+            restaurants.append({
+                  "id":row[0],
+                  "name":row[1],
+                  "cuisine":row[2],
+                  "rating":row[3]
+            })
+      conn.close()
+      return restaurants
+
+def get_restaurants_by_id(restaurant_id):
+      conn=get_connection()
+      cursor=conn.cursor()
+
+      cursor.execute("""SELECT * FROM restaurants WHERE id=?""", (restaurant_id,))
+      row = cursor.fetchone()
+      conn.close()
+      if row:
+            return {
+                  "id": row[0],
+                  "name": row[1],
+                  "cuisine": row[2],
+                  "rating": row[3]
+            }
+      return None
+
+def update_restaurant(restaurant_id, name, cuisine, rating):
+      conn = get_connection()
+      cursor = conn.cursor()
+
+      cursor.execute(
+            """
+            UPDATE restaurants
+            SET name=?, cuisine=?, rating=?
+            WHERE id=?
+            """,
+            (name, cuisine, rating, restaurant_id)
+      )
+
+      conn.commit()
+
+      updated = cursor.rowcount
+
+      conn.close()
+
+      return updated
+
+def delete_restaurant(restaurant_id):
+      conn = get_connection()
+      cursor = conn.cursor()
+
+      cursor.execute(
+            "DELETE FROM restaurants WHERE id=?",
+            (restaurant_id,)
+      )
+
+      conn.commit()
+
+      deleted = cursor.rowcount
+
+      conn.close()
+
+      return deleted
+
+
