@@ -1,7 +1,7 @@
 from flask import Flask
 from flask import jsonify
 from flask import request
-from db import init_db, seed_food,add_orders,get_order_db
+from db import  init_db, seed_food,add_orders,get_order_db
 from db import get_all_foods
 from db import get_orders_with_food
 from db import get_food_by_id
@@ -23,7 +23,11 @@ from db import get_total_revenue
 from db import get_top_food
 from db import get_top_customer,add_restaurants,get_restaurants,get_restaurants_by_id
 from db import update_restaurant,delete_restaurant
-
+from db import add_menu_item,get_restaurant_menu,get_menu_by_restaurant
+from db import get_cart_by_user
+from db import create_cart
+from db import get_menu_item_by_id
+from db import add_cart_item,get_cart_details,delete_cart_items,update_cart_item
 
 app=Flask(__name__)
 
@@ -354,6 +358,161 @@ def remove_restaurant(restaurant_id):
         "message":"restaurant deleted successfully"
     })
 
+@app.route("/restaurants/menu", methods=["POST"])
+def add_menu_item_route():
+    data = request.get_json()
+    if "restaurant_id" not in data:
+            return jsonify({"error":"restaurant_id is missing"}),400
+    
+    restaurant = get_restaurants_by_id(data["restaurant_id"])
+    if not restaurant:
+            return jsonify({"error":"restaurant not found"}),404
+
+    if "food_id" not in data:
+        return jsonify({"error":"food_id is missing"}),400
+    food = get_food_by_id(data["food_id"])
+    if not food:
+        return jsonify({"error":"food not found"}),404
+
+    if "price" not in data:
+        return jsonify({"error":"price is missing"}),400
+
+    menu_id = add_menu_item(
+        data["restaurant_id"],
+        data["food_id"],
+        data["price"]
+    )
+
+    return jsonify({
+        "message":"menu item added successfully",
+        "menu_id": menu_id
+    })
+
+@app.route("/restaurants/menu", methods=["GET"])
+def list_menu_items():
+    menu = get_restaurant_menu()
+    return jsonify(menu)
+
+@app.route("/restaurants/<int:restaurant_id>/menu", methods=["GET"])
+def list_menu_items_by_restaurant(restaurant_id):
+    restaurant = get_restaurants_by_id(restaurant_id)
+    if not restaurant:
+        return jsonify({"error":"restaurant not found"}),404
+    
+    menu = get_menu_by_restaurant(restaurant_id)
+    if menu:
+        return jsonify(menu)
+    else:
+        return jsonify({"error":"no menu items found for this restaurant"}),404
+
+@app.route("/cart/add", methods=["POST"])
+def add_to_cart():
+
+    data = request.get_json()
+
+    if "user_id" not in data:
+        return jsonify({"error":"user_id is missing"}),400
+
+    if "menu_id" not in data:
+        return jsonify({"error":"menu_id is missing"}),400
+
+    if "quantity" not in data:
+        return jsonify({"error":"quantity is missing"}),400
+
+    if data["quantity"] <= 0:
+        return jsonify({"error":"quantity is invalid"}),400
+
+    user = get_user_by_id(data["user_id"])
+
+    if not user:
+        return jsonify({"error":"user not found"}),404
+
+    menu_item = get_menu_item_by_id(data["menu_id"])
+
+    if not menu_item:
+        return jsonify({"error":"menu item not found"}),404
+
+    cart = get_cart_by_user(data["user_id"])
+
+    restaurant_id = menu_item["restaurant_id"]
+
+    if not cart:
+
+        cart_id = create_cart(
+            data["user_id"],
+            restaurant_id
+        )
+
+    else:
+
+        if cart["restaurant_id"] != restaurant_id:
+            return jsonify({
+                "error":"cart contains items from another restaurant"
+            }),400
+
+        cart_id = cart["id"]
+
+    item_id = add_cart_item(
+        cart_id,
+        data["menu_id"],
+        data["quantity"]
+    )
+
+    return jsonify({
+        "message":"item added to cart",
+        "cart_item_id": item_id
+    })
+
+@app.route("/cart/<int:user_id>")
+def view_cart(user_id):
+    user=get_user_by_id(user_id)
+    if not user:
+        return jsonify({"error":"user not found"}),404
+    rows=get_cart_details(user_id)
+    if not rows:
+        return jsonify({"error":"cart is empty"}),404
+    restaurant_name=rows[0][0]
+    items=[]
+    cart_total=0
+    for row in rows:
+        item_total=row[3]*row[4]
+        cart_total += item_total
+
+        items.append({"cart_item_id": row[1],
+            "food_name": row[2],
+            "price": row[3],
+            "quantity": row[4],
+            "total": item_total})
+        
+    return jsonify({
+        "restaurant": restaurant_name,
+        "items": items,
+        "cart_total": cart_total})
+
+@app.route("/cart/item/<int:cart_item_id>", methods=["DELETE"])
+def remove_cart_item(cart_item_id):
+    deleted=delete_cart_items(cart_item_id)
+    if deleted ==0:
+        return jsonify({"error":"cart item not found"}),404
+    return jsonify({"message":"cart item deleted successfully"})
+
+@app.route("/cart/item/<int:cart_item_id>",methods=["PUT"])
+def modify_cart_item(cart_item_id):
+    data=request.get_json()
+    if "quantity" not in data:
+        return jsonify({"error":"quantity is missing"}),400
+    if data["quantity"]<=0:
+        return jsonify({"error":"quantity is invalid"}),400
+    
+    updated=update_cart_item(cart_item_id,data["quantity"])
+    if updated == 0:
+        return jsonify({
+            "error":"cart item not found"
+        }),404
+
+    return jsonify({
+        "message":"cart item updated successfully"
+    })
 
 
 init_db()
