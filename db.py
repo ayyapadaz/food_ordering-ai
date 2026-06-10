@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 def get_connection():
      return sqlite3.connect("database.db")
     
@@ -17,13 +18,27 @@ def init_db():
                    category TEXT NOT NULL)""")
     
      cursor.execute("""CREATE TABLE IF NOT EXISTS orders (
-                   id INTEGER PRIMARY KEY AUTOINCREMENT,
-                   user_id INTEGER NOT NULL,
-                   food_id INTEGER NOT NULL,
-                   quantity INTEGER NOT NULL,
-                   
-                   FOREIGN KEY(user_id) REFERENCES users(id),
-                   FOREIGN KEY(food_id) REFERENCES food_items(id))""")
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    restaurant_id INTEGER NOT NULL,
+    total_amount REAL NOT NULL,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(restaurant_id) REFERENCES restaurants(id))""")
+     
+     cursor.execute("""CREATE TABLE IF NOT EXISTS order_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    food_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    price REAL NOT NULL,
+
+    FOREIGN KEY(order_id) REFERENCES orders(id),
+    FOREIGN KEY(food_id) REFERENCES food_items(id))""")
+     
+
      cursor.execute("""CREATE TABLE IF NOT EXISTS restaurants (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -122,26 +137,51 @@ def get_order_db():
       return orders          
 
 def get_orders_with_food():
-      conn=get_connection()
-      cursor=conn.cursor()
-      
-      cursor.execute("""SELECT orders.id,food_items.name,food_items.price,orders.quantity
-                        FROM orders
-                        JOIN food_items ON orders.food_id = food_items.id""")
-      rows=cursor.fetchall()
+    conn = get_connection()
+    cursor = conn.cursor()
 
-      result=[]
+    cursor.execute("""SELECT
+            orders.id,
+            restaurants.name,
+            food_items.name,
+            order_items.quantity,
+            order_items.price,
+            orders.total_amount,
+            orders.status,
+            orders.created_at
 
-      for row in rows:
-            result.append({
-                  "order_id":row[0],
-                  "food_name":row[1],
-                  "price":row[2],
-                  "quantity":row[3],
-                  "total_price":row[2]*row[3]
-            })
-      conn.close()
-      return result
+        FROM orders
+
+        JOIN restaurants
+            ON orders.restaurant_id = restaurants.id
+
+        JOIN order_items
+            ON orders.id = order_items.order_id
+
+        JOIN food_items
+            ON order_items.food_id = food_items.id
+    """)
+
+    rows = cursor.fetchall()
+
+    result = []
+
+    for row in rows:
+        result.append({
+            "order_id": row[0],
+            "restaurant": row[1],
+            "food_name": row[2],
+            "quantity": row[3],
+            "price": row[4],
+            "item_total": row[3] * row[4],
+            "order_total": row[5],
+            "status": row[6],
+            "created_at": row[7]
+        })
+
+    conn.close()
+
+    return result
 
 def get_food_by_id(food_id):
       conn=get_connection()
@@ -241,24 +281,57 @@ def delete_user(user_id):
       return deleted
 
 def get_order_by_id(order_id):
-      conn=get_connection()
-      cursor=conn.cursor()
-      cursor.execute("""SELECT orders.id, food_items.name,food_items.price, orders.quantity
-                        FROM orders
-                        JOIN food_items ON orders.food_id = food_items.id
-                        WHERE orders.id=?""",(order_id,))
-      row=cursor.fetchone()
-      conn.close()
 
-      if row:
-            return {
-                  "order_id":row[0],
-                  "food_name":row[1],
-                  "price":row[2],
-                  "quantity":row[3],
-                  "total_price":row[2]*row[3]
-            }
-      return None
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""SELECT
+            orders.id,
+            restaurants.name,
+            food_items.name,
+            order_items.quantity,
+            order_items.price,
+            orders.total_amount,
+            orders.status,
+            orders.created_at
+
+        FROM orders
+
+        JOIN restaurants
+            ON orders.restaurant_id = restaurants.id
+
+        JOIN order_items
+            ON orders.id = order_items.order_id
+
+        JOIN food_items
+            ON order_items.food_id = food_items.id
+
+        WHERE orders.id = ?""", (order_id,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows:
+        return None
+
+    items = []
+
+    for row in rows:
+        items.append({
+            "food_name": row[2],
+            "quantity": row[3],
+            "price": row[4],
+            "item_total": row[3] * row[4]
+        })
+
+    return {
+        "order_id": rows[0][0],
+        "restaurant": rows[0][1],
+        "order_total": rows[0][5],
+        "status": rows[0][6],
+        "created_at": rows[0][7],
+        "items": items
+    }
 
 def add_food(name, price, category):
       conn = get_connection()
@@ -345,24 +418,51 @@ def delete_food(food_id):
       return deleted
 
 def get_orders_by_user(user_id):
-      conn=get_connection()
-      cursor=conn.cursor()
-      cursor.execute("""SELECT orders.id, food_items.name, food_items.price, orders.quantity
-                        FROM orders
-                        JOIN food_items ON orders.food_id = food_items.id
-                        WHERE orders.user_id=?""",(user_id,))
-      rows=cursor.fetchall()
-      conn.close()
-      result=[]
-      for row in rows:
-            result.append({
-                  "order_id":row[0],
-                  "food_name":row[1],
-                  "price":row[2],
-                  "quantity":row[3],
-                  "total_price":row[2]*row[3]
-            })
-      return result
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""SELECT
+            orders.id,
+            restaurants.name,
+            food_items.name,
+            order_items.quantity,
+            order_items.price,
+            orders.total_amount,
+            orders.status,
+            orders.created_at
+
+        FROM orders
+
+        JOIN restaurants
+            ON orders.restaurant_id = restaurants.id
+
+        JOIN order_items
+            ON orders.id = order_items.order_id
+
+        JOIN food_items
+            ON order_items.food_id = food_items.id
+
+        WHERE orders.user_id = ? """, (user_id,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    result = []
+
+    for row in rows:
+        result.append({
+            "order_id": row[0],
+            "restaurant": row[1],
+            "food_name": row[2],
+            "quantity": row[3],
+            "price": row[4],
+            "item_total": row[3] * row[4],
+            "order_total": row[5],
+            "status": row[6],
+            "created_at": row[7]
+        })
+    return result
 
 def get_total_orders():
       conn=get_connection()
@@ -658,3 +758,109 @@ def update_cart_item(cart_item_id,quantity):
       updated=cursor.rowcount
       conn.close()
       return updated
+
+def create_order(user_id,restaurant_id,total_amount):
+      conn=get_connection()
+      cursor=conn.cursor()
+      created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+      cursor.execute("""INSERT INTO orders (user_id,restaurant_id,total_amount,status,created_at) VALUES (?,?,?,?,?)""",(user_id,restaurant_id,total_amount,"Placed",created_at))
+      conn.commit()
+      order_id=cursor.lastrowid
+      conn.close
+      return order_id
+
+def add_order_item(order_id,food_id,quantity,price):
+      conn=get_connection()
+      cursor=conn.cursor()
+      cursor.execute("""INSERT INTO order_items (order_id,food_id,quantity,price) VALUES (?,?,?,?)""",(order_id,food_id,quantity,price))
+      conn.commit()
+      conn.close
+
+def get_cart_by_user(user_id):
+      conn=get_connection()
+      cursor=conn.cursor()
+      cursor.execute("""SELECT * FROM cart WHERE user_id=?""",(user_id,))
+      row=cursor.fetchone()
+      conn.close()
+      if row:
+            return {
+            "id": row[0],
+            "user_id": row[1],
+            "restaurant_id": row[2]
+        }
+      return None
+
+def get_cart_items(cart_id):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""SELECT
+            cart_items.id,
+            restaurant_menu.food_id,
+            food_items.name,
+            restaurant_menu.price,
+            cart_items.quantity
+        FROM cart_items
+        JOIN restaurant_menu
+            ON cart_items.menu_id = restaurant_menu.id
+        JOIN food_items
+            ON restaurant_menu.food_id = food_items.id
+        WHERE cart_items.cart_id=?""", (cart_id,))
+
+    rows = cursor.fetchall()
+    conn.close()
+    items = []
+    for row in rows:
+        items.append({
+            "cart_item_id": row[0],
+            "food_id": row[1],
+            "food_name": row[2],
+            "price": row[3],
+            "quantity": row[4]
+        })
+    return items
+
+def clear_cart_items(cart_id):
+      conn = get_connection()
+      cursor = conn.cursor()
+      cursor.execute("""
+        DELETE FROM cart_items
+        WHERE cart_id=?""", (cart_id,))
+      conn.commit()
+      conn.close()
+
+def clear_cart(cart_id):
+      conn = get_connection()
+      cursor = conn.cursor()
+      cursor.execute("""
+        DELETE FROM cart
+        WHERE id=?""", (cart_id,))
+      conn.commit()
+      conn.close()
+
+def checkout_cart(user_id):
+    cart = get_cart_by_user(user_id)
+    if not cart:
+        return None
+
+    items = get_cart_items(cart["id"])
+
+    if len(items) == 0:
+        return None
+
+    total_amount = 0
+
+    for item in items:
+        total_amount += item["price"] * item["quantity"]
+
+    order_id = create_order(user_id,cart["restaurant_id"],total_amount)
+
+    for item in items:
+        add_order_item(order_id,item["food_id"],item["quantity"],item["price"])
+
+    clear_cart_items(cart["id"])
+    clear_cart(cart["id"])
+
+    return {"order_id": order_id,"total_amount": total_amount}

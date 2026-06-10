@@ -28,6 +28,8 @@ from db import get_cart_by_user
 from db import create_cart
 from db import get_menu_item_by_id
 from db import add_cart_item,get_cart_details,delete_cart_items,update_cart_item
+from db import checkout_cart
+
 
 app=Flask(__name__)
 
@@ -43,7 +45,6 @@ def foods():
 @app.route("/orders")
 def get_orders():
     return jsonify(get_orders_with_food())
-
 @app.route("/order", methods=["POST"])
 def place_order():
 
@@ -514,8 +515,21 @@ def modify_cart_item(cart_item_id):
         "message":"cart item updated successfully"
     })
 
+@app.route("/cart/checkout/<int:user_id>",methods=["POST"])
+def checkout(user_id):
+    result=checkout_cart(user_id)
+    if not result:
+        return jsonify({"error":"cart is empty"}),404
+    return jsonify({
+        "message": "checkout successful",
+        "order_id": result["order_id"],
+        "total_amount": result["total_amount"]
+    })
+
+
 
 init_db()
 seed_food()
 if __name__=="__main__":
+    print(app.url_map)
     app.run(debug=True)
