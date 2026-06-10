@@ -107,35 +107,6 @@ def get_all_foods():
       conn.close()
       return foods
 
-
-def add_orders(user_id,food_id,quantity):
-      conn=get_connection()
-      cursor=conn.cursor()
-
-      cursor.execute("""INSERT INTO orders (user_id, food_id, quantity) VALUES (?,?,?)""",(user_id, food_id, quantity))
-      conn.commit()
-
-      order_id=cursor.lastrowid
-      conn.close()
-      return order_id
-
-def get_order_db():
-      conn=get_connection()
-      cursor=conn.cursor()
-      cursor.execute("""SELECT * FROM orders""")
-      rows=cursor.fetchall()
-      conn.close()
-      orders=[]
-
-      for row in rows:
-            orders.append({
-                  "id":row[0],
-                  "user_id":row[1],
-                  "food_id":row[2],
-                  "quantity":row[3]
-            }) 
-      return orders          
-
 def get_orders_with_food():
     conn = get_connection()
     cursor = conn.cursor()
@@ -209,16 +180,6 @@ def delete_order(order_id):
       deleted =cursor.rowcount
       conn.close()
       return deleted
-
-def update_order(order_id,quantity):
-      conn=get_connection()
-      cursor=conn.cursor()
-
-      cursor.execute("""UPDATE orders SET quantity=? WHERE id=?""",(quantity,order_id))
-      conn.commit()
-      updated =cursor.rowcount
-      conn.close()
-      return updated
 
 def add_user(name,email):
       conn=get_connection()
@@ -473,51 +434,78 @@ def get_total_orders():
       return total
 
 def get_total_revenue():
-      conn=get_connection()
-      cursor=conn.cursor()
-      cursor.execute("""SELECT SUM(food_items.price * orders.quantity)
-                     FROM orders
-                     JOIN food_items ON orders.food_id = food_items.id""")
-      revenue = cursor.fetchone()[0]
-      conn.close()
-      return revenue
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT SUM(total_amount)
+        FROM orders""")
+
+    revenue = cursor.fetchone()[0]
+    conn.close()
+    return revenue or 0
 
 def get_top_food():
-      conn=get_connection()
-      cursor=conn.cursor()
-      cursor.execute("""SELECT food_items.name, SUM(orders.quantity) as total_quantity
-                     FROM orders
-                     JOIN food_items ON orders.food_id = food_items.id
-                     GROUP BY food_items.name
-                     ORDER BY total_quantity DESC
-                     LIMIT 1""")
-      row = cursor.fetchone()
-      conn.close()
-      if row:
-            return {
-                  "food_name": row[0],
-                  "total_quantity": row[1]
-            }
-      return None
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            food_items.name,
+            SUM(order_items.quantity) AS total_quantity
+        FROM order_items
+        JOIN food_items
+            ON order_items.food_id = food_items.id
+        GROUP BY food_items.name
+        ORDER BY total_quantity DESC
+        LIMIT 1
+    """)
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return {
+            "food_name": row[0],
+            "total_quantity": row[1]
+        }
+
+    return None
 
 def get_top_customer():
-      conn=get_connection()
-      cursor=conn.cursor()
-      cursor.execute("""SELECT users.name, SUM(food_items.price * orders.quantity) as total_spent
-                     FROM orders
-                     JOIN users ON orders.user_id = users.id
-                     JOIN food_items ON orders.food_id = food_items.id
-                     GROUP BY users.name
-                     ORDER BY total_spent DESC
-                     LIMIT 1""")
-      row = cursor.fetchone()
-      conn.close()                  
-      if row:
-            return {
-                  "customer_name": row[0],
-                  "total_spent": row[1]
-            }
-      return None
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            users.name,
+            SUM(order_items.price * order_items.quantity) AS total_spent
+
+        FROM orders
+
+        JOIN users
+            ON orders.user_id = users.id
+
+        JOIN order_items
+            ON orders.id = order_items.order_id
+
+        GROUP BY users.id
+
+        ORDER BY total_spent DESC
+
+        LIMIT 1
+    """)
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return {
+            "customer_name": row[0],
+            "total_spent": row[1]
+        }
+
+    return None
 
 def add_restaurants(name,cuisine,rating):
       conn=get_connection()
@@ -767,7 +755,7 @@ def create_order(user_id,restaurant_id,total_amount):
       cursor.execute("""INSERT INTO orders (user_id,restaurant_id,total_amount,status,created_at) VALUES (?,?,?,?,?)""",(user_id,restaurant_id,total_amount,"Placed",created_at))
       conn.commit()
       order_id=cursor.lastrowid
-      conn.close
+      conn.close()
       return order_id
 
 def add_order_item(order_id,food_id,quantity,price):
@@ -775,21 +763,8 @@ def add_order_item(order_id,food_id,quantity,price):
       cursor=conn.cursor()
       cursor.execute("""INSERT INTO order_items (order_id,food_id,quantity,price) VALUES (?,?,?,?)""",(order_id,food_id,quantity,price))
       conn.commit()
-      conn.close
-
-def get_cart_by_user(user_id):
-      conn=get_connection()
-      cursor=conn.cursor()
-      cursor.execute("""SELECT * FROM cart WHERE user_id=?""",(user_id,))
-      row=cursor.fetchone()
       conn.close()
-      if row:
-            return {
-            "id": row[0],
-            "user_id": row[1],
-            "restaurant_id": row[2]
-        }
-      return None
+
 
 def get_cart_items(cart_id):
 
@@ -864,3 +839,18 @@ def checkout_cart(user_id):
     clear_cart(cart["id"])
 
     return {"order_id": order_id,"total_amount": total_amount}
+
+def update_order_status(order_id, status):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE orders
+        SET status = ?
+        WHERE id = ?
+    """, (status, order_id))
+
+    conn.commit()
+    updated = cursor.rowcount
+    conn.close()
+    return updated

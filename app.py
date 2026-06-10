@@ -26,8 +26,8 @@ from db import get_cart_by_user
 from db import create_cart
 from db import get_menu_item_by_id
 from db import add_cart_item,get_cart_details,delete_cart_items,update_cart_item
-from db import checkout_cart
-
+from db import checkout_cart,get_cart_items,clear_cart
+from db import update_order_status
 
 app=Flask(__name__)
 
@@ -375,6 +375,11 @@ def add_to_cart():
         return jsonify({"error":"menu item not found"}),404
 
     cart = get_cart_by_user(data["user_id"])
+    if cart:
+        items = get_cart_items(cart["id"])
+        if len(items) == 0:
+            clear_cart(cart["id"])   
+            cart = None
 
     restaurant_id = menu_item["restaurant_id"]
 
@@ -467,7 +472,28 @@ def checkout(user_id):
         "total_amount": result["total_amount"]
     })
 
+@app.route("/orders/<int:order_id>/status", methods=["PUT"])
+def change_order_status(order_id):
 
+    data = request.get_json()
+    allowed_statuses = [
+        "Placed",
+        "Confirmed",
+        "Preparing",
+        "Out for Delivery",
+        "Delivered",
+        "Cancelled"
+    ]
+    if data["status"] not in allowed_statuses:
+        return jsonify({"error": "invalid status"}), 400
+
+    updated = update_order_status(
+        order_id,
+        data["status"]
+    )
+    if updated == 0:
+        return jsonify({"error": "order not found"}), 404
+    return jsonify({"message": "status updated"})
 
 init_db()
 seed_food()
