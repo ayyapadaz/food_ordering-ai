@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Food Ordering System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+    <h1>🍔 Food Ordering System</h1>
+</nav>
+
+<div class="container">
+
+```
+<section>
+    <h2>Create User</h2>
+
+    <input id="name" placeholder="Name">
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+
+    <button onclick="createUser()">Create User</button>
+</section>
+
+<section>
+    <h2>Login</h2>
+
+    <input id="loginEmail" placeholder="Email">
+    <input id="loginPassword" type="password" placeholder="Password">
+
+    <button onclick="login()">Login</button>
+
+    <p id="loginResult"></p>
+</section>
+
+<section>
+    <h2>Foods</h2>
+    <button onclick="loadFoods()">Load Foods</button>
+
+    <div id="foods"></div>
+</section>
+
+<section>
+    <h2>Restaurants</h2>
+    <button onclick="loadRestaurants()">Load Restaurants</button>
+
+    <div id="restaurants"></div>
+</section>
+
+<section>
+    <h2>Add To Cart</h2>
+
+    <input id="userId" placeholder="User ID">
+    <input id="menuId" placeholder="Menu ID">
+    <input id="quantity" placeholder="Quantity">
+
+    <button onclick="addToCart()">Add</button>
+</section>
+
+<section>
+    <h2>Checkout</h2>
+
+    <input id="checkoutUserId" placeholder="User ID">
+
+    <button onclick="checkout()">Checkout</button>
+
+    <p id="checkoutResult"></p>
+</section>
+```
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>

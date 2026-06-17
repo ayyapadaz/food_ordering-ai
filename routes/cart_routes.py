@@ -85,7 +85,7 @@ def view_cart(user_id):
         item_total=row[3]*row[4]
         cart_total += item_total
 
-        items.cart_bpend({"cart_item_id": row[1],
+        items.append({"cart_item_id": row[1],
             "food_name": row[2],
             "price": row[3],
             "quantity": row[4],

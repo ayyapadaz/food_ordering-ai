@@ -1,5 +1,8 @@
 from flask import Blueprint,jsonify, request
+from flask_jwt_extended import jwt_required
 food_bp = Blueprint("food",__name__)
+
+from services.auth_utils import admin_required
 
 print("FOOD ROUTES LOADED")
 
@@ -18,7 +21,11 @@ def get_food(food_id):
         return jsonify({"error":"food not found"}),404
 
 @food_bp.route("/foods", methods=["POST"])
+@jwt_required()
 def create_food():
+    error=admin_required()
+    if error:
+        return error
 
     data = request.get_json()
 
@@ -52,7 +59,11 @@ def get_foods_by_cat(category):
     
 
 @food_bp.route("/foods/<int:food_id>", methods=["PUT"])
+@jwt_required()
 def modify_food(food_id):
+    error=admin_required()
+    if error:
+        return error
 
     data = request.get_json()
 
@@ -80,7 +91,11 @@ def modify_food(food_id):
     })
 
 @food_bp.route("/foods/<int:food_id>", methods=["DELETE"])
+@jwt_required()
 def remove_food(food_id):
+    error=admin_required()
+    if error:
+        return error
 
     deleted = delete_food(food_id)
 

@@ -5,11 +5,16 @@ print("RESTAURANT ROUTES LOADED")
 
 from services.restaurant_service import *
 from services.food_service import *
-
+from flask_jwt_extended import jwt_required
+from services.auth_utils import admin_required
 
 
 @restaurant_bp.route("/restaurants", methods=["POST"])
+@jwt_required()
 def create_restaurant():
+    error=admin_required()
+    if error:
+        return error
     data = request.get_json()
 
     if "name" not in data:
@@ -46,7 +51,11 @@ def get_restaurant(restaurant_id):
         return jsonify({"error":"restaurant not found"}),404
 
 @restaurant_bp.route("/restaurants/<int:restaurant_id>", methods=["PUT"])
+@jwt_required()
 def modify_restaurant(restaurant_id):
+    error=admin_required()
+    if error:
+        return error
 
     data = request.get_json()
 
@@ -74,7 +83,11 @@ def modify_restaurant(restaurant_id):
     })
 
 @restaurant_bp.route("/restaurants/<int:restaurant_id>", methods=["DELETE"])
+@jwt_required()
 def remove_restaurant(restaurant_id):
+    error=admin_required()
+    if error:
+        return error
 
     deleted = delete_restaurant(restaurant_id)
 
